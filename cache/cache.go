@@ -4,9 +4,10 @@ import (
 	"errors"
 	"log"
 	"os"
-	"time"
 	"strzybug/utils"
 	"strzybug/weather"
+	"sync"
+	"time"
 )
 
 type Cache struct {
@@ -17,25 +18,21 @@ type Cache struct {
 	Request weather.Request
 
 	value weather.Response
+	mutex sync.Mutex
 }
 
-func New(filename string, request weather.Request) (Cache, error) {
-	c := Cache{
-		Filename: filename,
-		Request: request,
-	}
-
+func (c *Cache) Init() error {
 	if err := c.loadFromFile(); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if err := c.ForceUpdate(); err != nil {
-				return c, utils.Wrap(err)
+				return utils.Wrap(err)
 			}
 		} else {
-			return c, utils.Wrap(err)
+			return utils.Wrap(err)
 		}
 	}
 
-	return c, utils.Wrap(c.KeepUpdated())
+	return utils.Wrap(c.KeepUpdated())
 }
 
 func (c *Cache) KeepUpdated() error {
@@ -46,6 +43,8 @@ func (c *Cache) KeepUpdated() error {
 }
 
 func (c *Cache) ForceUpdate() (err error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	if c.value, err = c.Request.Run(); err != nil {
 		return utils.Wrap(err)
 	}
@@ -59,7 +58,7 @@ func (c *Cache) Access() *weather.Response {
 	return &c.value
 }
 
-func (c Cache) needsUpdate() bool {
+func (c *Cache) needsUpdate() bool {
 	year, month, day := time.Now().Local().Date()
 	startOfDay := time.Date(year, month, day, 0, 0, 0, 1, time.Local)
 	return startOfDay.After(c.value.FindFirstDate())

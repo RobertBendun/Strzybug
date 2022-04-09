@@ -24,14 +24,17 @@ func dateFormatter(layout string) func(t time.Time) string {
 func main() {
 	owmApiKey := os.Getenv("OpenWeatherMap_Api_Key")
 
-	weather, err := cache.New("weather-cache.json", weather.Request{
-		Latitude:     "52.40",
-		Longitude:    "16.93",
-		LanguageCode: "pl",
-		ApiKey:       owmApiKey,
-	})
+	weather := cache.Cache{
+		Filename: "weather-cache.json",
+		Request: weather.Request{
+			Latitude:     "52.40",
+			Longitude:    "16.93",
+			LanguageCode: "pl",
+			ApiKey:       owmApiKey,
+		},
+	}
 
-	if err != nil {
+	if err := weather.Init(); err != nil {
 		log.Fatalln(err)
 	}
 
